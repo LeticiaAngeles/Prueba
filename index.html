@@ -3,9 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Mini Twitter con Firebase</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <h2>Probando el git y sus rames</h2>
+    <div class="container mt-5">
+        <h1 class="text-center">Mini Twitter</h1>
+        <div id="user-info" class="text-center">
+            <button id="login-btn" class="btn btn-primary">Iniciar sesión con Google</button>
+            <button id="logout-btn" class="btn btn-danger d-none">Cerrar sesión</button>
+            <p id="user-name" class="mt-3"></p>
+        </div>
+        <div id="comment-section" class="mt-5 d-none">
+            <h3>Comenta algo</h3>
+            <textarea id="comment" class="form-control" rows="3"></textarea>
+            <button id="post-comment" class="btn btn-success mt-3">Publicar</button>
+        </div>
+        <div id="comments-list" class="mt-5">
+            <h3>Comentarios</h3>
+            <ul id="comments" class="list-group"></ul>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+
+    <script>
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVmdyaHEj4B_xC2ZkGR1N06-ALss1l3t0",
+  authDomain: "los-creadores-8d7af.firebaseapp.com",
+  projectId: "los-creadores-8d7af",
+  storageBucket: "los-creadores-8d7af.appspot.com",
+  messagingSenderId: "756199327313",
+  appId: "1:756199327313:web:f352a94c4a8ffc9c28da70",
+  measurementId: "G-0Y4TRY0GB0"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Autenticación de Google
+        const provider = new firebase.auth.GoogleAuthProvider();
+
+        document.getElementById('login-btn').addEventListener('click', () => {
+            auth.signInWithPopup(provider).then(result => {
+                const user = result.user;
+                document.getElementById('user-name').innerText = `Hola, ${user.displayName}`;
+                document.getElementById('login-btn').classList.add('d-none');
+                document.getElementById('logout-btn').classList.remove('d-none');
+                document.getElementById('comment-section').classList.remove('d-none');
+                loadComments();
+            }).catch(error => {
+                console.error("Error en la autenticación: ", error);
+            });
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            auth.signOut().then(() => {
+                document.getElementById('user-name').innerText = '';
+                document.getElementById('login-btn').classList.remove('d-none');
+                document.getElementById('logout-btn').classList.add('d-none');
+                document.getElementById('comment-section').classList.add('d-none');
+            });
+        });
+
+        // Publicar un comentario
+        document.getElementById('post-comment').addEventListener('click', () => {
+            const comment = document.getElementById('comment').value;
+            if (comment) {
+                const user = auth.currentUser;
+                db.collection('comments').add({
+                    text: comment,
+                    user: user.displayName,
+                    userId: user.uid,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    document.getElementById('comment').value = '';
+                    loadComments();
+                }).catch(error => {
+                    console.error("Error al publicar comentario: ", error);
+                });
+            }
+        });
+
+        // Cargar comentarios
+        function loadComments() {
+            db.collection('comments').orderBy('timestamp', 'desc').onSnapshot(snapshot => {
+                const commentsList = document.getElementById('comments');
+                commentsList.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const comment = doc.data();
+                    const li = document.createElement('li');
+                    li.classList.add('list-group-item');
+                    li.textContent = `${comment.user}: ${comment.text}`;
+                    commentsList.appendChild(li);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
